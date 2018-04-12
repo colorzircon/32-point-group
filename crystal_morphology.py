@@ -142,19 +142,19 @@ def plot3d_surfaces(f, val, hkl, planes, number_planes):
     p1.polys = cells             # and the second parameter is an array describing the composition of each face.
     p1.point_data.scalars = np.linspace(0.0, 1.0, len(p1.points))  
     mlab.figure(number_planes, fgcolor=(0, 0, 0), bgcolor=(1, 1, 1))
-    if i < val[0]  and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[0]:
+    if (i < val[0]  and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[0]) or (len(hkl) == 1 and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[0]):
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(1.0, 0.0, 0.0))
-    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[1]:
+    if (i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[1]) or (len(hkl) == 1 and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[1]):
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.0, 0.0, 1.0))
-    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[2]:
+    if (i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[2]) or (len(hkl) == 1 and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[2]):
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.0, 0.5, 0.5))
-    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[3]:
+    if (i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[3]) or (len(hkl) == 1 and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[3]):
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.0, 1.0, 0.0))
-    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[4]:
+    if (i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[4]) or (len(hkl) == 1 and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[4]):
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.5, 0.5, 0.5))
-    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[5]:
+    if (i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[5]) or (len(hkl) == 1 and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[5]):
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.4, 0.4, 0.0))
-    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[6]:
+    if (i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[6]) or (len(hkl) == 1 and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[6]):
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.5, 0.0, 0.5))
     # else:
         # print hkl[1], 'plane is not defined.'	
@@ -176,41 +176,52 @@ def array_to_list(qfp2):
 			
     return n_qfp2, qfp2_list
 
-def number_of_planes(n_qfp2):
+def number_of_planes(hkl, n_qfp2):
     '''
      	calculate the number of planes that make up the polyhedron.
     '''
-    val = []  
-    for item in n_qfp2:
-        val.append(n_qfp2.count(item))
-    val[0] = 6  # the cube has 6 equivalent (100) faces.
+    if len(hkl) == 2:
+        val = []  
+        for item in n_qfp2:
+            val.append(n_qfp2.count(item))
+        val[0] = 6  # the cube has 6 equivalent (100) faces.
+    elif len(hkl) == 1:	
+        val = []  
+        for item in n_qfp2:
+            val.append(n_qfp2.count(item))
+			
     return  val
-		
 
 if __name__ == "__main__":  
-                      		
-    hkl = [[1,0,0], [1,1,3]]                    
-    planes, number_planes = crystal_plane(hkl)		
-    area_target = [0.8, 0.2]                    # the sum of the area fractions is 1.
-    Iter_max = 5000
-    re_xtol  = 1e-12
-    abs_ftol = 1e-12
-    d0       = [1, 1]
-    dx       = 0.0001	
-    res      = optimal_distance_local(Iter_max, re_xtol, abs_ftol, d0, dx)  
-    areas    = surface_areas(res[0])	
-    areas_fraction = [areas[0]/(areas[0] + areas[1]), areas[1]/(areas[0] + areas[1])]
-    print 'The optimal distance d is', res[0], ', area is ', areas, '.'
-    print 'The area fraction is ', areas_fraction,  ', target area fraction is', area_target, '.'
-	
-    ps_setd_mingled(number_planes, planes, res[0])  # set distances of planes. 
+
     diameter = 10.0      
     volume   = 4.0/3.0*np.pi* (diameter*0.5)**3
-    qfp      = enclose_polyhedron(number_planes, planes, volume)
+    hkl = [[1,0,0],[1,1,1]]                    
+
+    if len(hkl) == 2:                      		
+        planes, number_planes = crystal_plane(hkl)		
+        area_target = [0.8, 0.2]                    # the sum of the area fractions is 1.
+        Iter_max = 5000
+        re_xtol  = 1e-12
+        abs_ftol = 1e-12
+        d0       = [1, 1]
+        dx       = 0.0001	
+        res      = optimal_distance_local(Iter_max, re_xtol, abs_ftol, d0, dx)  
+        areas    = surface_areas(res[0])	
+        areas_fraction = [areas[0]/(areas[0] + areas[1]), areas[1]/(areas[0] + areas[1])]
+        print 'The optimal distance d is', res[0], ', area is ', areas, '.'
+        print 'The area fraction is ', areas_fraction,  ', target area fraction is', area_target, '.'
+        ps_setd_mingled(number_planes, planes, res[0])  # set distances of planes. 
+		
+    if  len(hkl) == 1:
+        planes, number_planes = crystal_plane(hkl)		
+        ps_setd_mingled(number_planes, planes, [2])  # set distances of planes. 
+	
+    qfp = enclose_polyhedron(number_planes, planes, volume)
 
     n_qfp2, qfp2_list = array_to_list(qfp[2])
-    point_for_plane = open('point_for_plane.txt','w+') # open the file. 
-    point_for_plane.truncate()                         # empty the file.
+    point_for_plane = open('point_for_plane.txt','w+') # open the file 
+    point_for_plane.truncate()                         # empty the file
     np.savetxt('point_for_plane.txt', qfp2_list)        
 	
     number_of_plane = open('number_of_plane.txt','w+') 
@@ -219,7 +230,7 @@ if __name__ == "__main__":
 
     Mil_ind  = [[1,0,0], [1,1,1], [1,2,2], [1,1,0], [0,1,2], [1,1,3], [1,2,3]]
     f        = crystal_surface_family(Mil_ind)		
-    val      = number_of_planes(n_qfp2)
+    val      = number_of_planes(hkl, n_qfp2)
     p1       = tvtk.PolyData()  
     n_planes = len(qfp[2])  
     for i in range(n_planes):   
