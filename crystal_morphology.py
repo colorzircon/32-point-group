@@ -180,8 +180,9 @@ def number_of_planes(n_qfp2):
     '''
      	calculate the number of planes that make up the polyhedron.
     '''
-    d = {k:n_qfp2.count(k) for k in set(n_qfp2)}
-    val = d.values()
+    val = []  
+    for item in n_qfp2:
+        val.append(n_qfp2.count(item))
 
     return  val
 		
