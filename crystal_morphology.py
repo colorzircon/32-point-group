@@ -183,7 +183,7 @@ def number_of_planes(n_qfp2):
     val = []  
     for item in n_qfp2:
         val.append(n_qfp2.count(item))
-    val[1] = 6  # the cube has 6 equivalent (100) faces.
+    val[0] = 6  # the cube has 6 equivalent (100) faces.
     return  val
 		
 
