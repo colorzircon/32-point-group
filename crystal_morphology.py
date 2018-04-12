@@ -203,14 +203,14 @@ if __name__ == "__main__":
     print 'The optimal distance d is', res[0], ', area is ', areas, '.'
     print 'The area fraction is ', areas_fraction,  ', target area fraction is', area_target, '.'
 	
-    ps_setd_mingled(number_planes, planes, res[0])  # set distances of planes。 
+    ps_setd_mingled(number_planes, planes, res[0])  # set distances of planes. 
     diameter = 10.0      
     volume   = 4.0/3.0*np.pi* (diameter*0.5)**3
     qfp      = enclose_polyhedron(number_planes, planes, volume)
 
     n_qfp2, qfp2_list = array_to_list(qfp[2])
-    point_for_plane = open('point_for_plane.txt','w+') # open the file 
-    point_for_plane.truncate()                         # empty the file
+    point_for_plane = open('point_for_plane.txt','w+') # open the file. 
+    point_for_plane.truncate()                         # empty the file.
     np.savetxt('point_for_plane.txt', qfp2_list)        
 	
     number_of_plane = open('number_of_plane.txt','w+') 
