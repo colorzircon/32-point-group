@@ -17,7 +17,7 @@ from crystal_shape import enclose_polyhedron
 
 def crystal_plane(hkl):
     '''
-       Return the geometric planes of the polyhedron, where the 32 point group is considered, 
+       return the geometric planes of the polyhedron, where the 32 point group is considered, 
 	   and the lattice parameter is taken as 0.4nm.
 	   hkl: Miller indices of crystallographic planes.
     ''' 
@@ -112,33 +112,49 @@ def optimal_distance_local(Iter_max, re_xtol, abs_ftol, d0, dx):
         print 'NLOPT_SUCCESS = 6, maxtime (above) was reached.' 
  
     return optd, enumerated_constant, minf
+	
+def crystal_surface_family(Mil_ind):
+    ''' 
+        determine all the equivalent crystal planes of the crystal plane family in the 32 point group.  
+		input: 
+		Mil_ind: Miller indices of crystallographic planes.
+		return:
+		f: crystal plane family.
+    '''  	
+    cc1 = CC.CrystalClass32()
+    f = []
+    for index in Mil_ind:
+        family = cc1.plane_family(index)
+        f.append(family)
+		
+    return f
 
-def plot3d_surfaces(val, hkl, planes, number_planes):
-    ''' This function is used to construct polygons. 
+def plot3d_surfaces(f, val, hkl, planes, number_planes):
+    ''' this function is used to construct polygons. 
 	    {100} in red, {111}in blue, {122} in cyan, {110} in green, 
 	    {012} in gray, {113} in brown, and {123} in purple. 
 
     number_planes: number of planes determined by the intersection.
     planes: planes that make up a polygon.
-    '''
-    cells = tvtk.CellArray()    # create a new CellArray object to assign the polys property.
-    cells.set_cells(1, planes)  # the first parameter is the number of faces (here is 1), 	                              
-    p1.polys = cells            # and the second parameter is an array describing the composition of each face.
+    '''		
+    cells  = tvtk.CellArray()    # create a new CellArray object to assign the polys property.
+    cells.set_cells(1, planes)   # the first parameter is the number of faces (here is 1), 	                              
+    p1.polys = cells             # and the second parameter is an array describing the composition of each face.
     p1.point_data.scalars = np.linspace(0.0, 1.0, len(p1.points))  
     mlab.figure(number_planes, fgcolor=(0, 0, 0), bgcolor=(1, 1, 1))
-    if i < val[0]  and hkl[0] == [1, 0, 0]:
+    if i < val[0]  and (hkl[0][0], hkl[0][1], hkl[0][2]) in f[0]:
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(1.0, 0.0, 0.0))
-    if i >= val[0] and hkl[1] == [1, 1, 1]:
+    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[1]:
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.0, 0.0, 1.0))
-    if i >= val[0] and hkl[1] == [1, 2, 2]:
+    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[2]:
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.0, 0.5, 0.5))
-    if i >= val[0] and hkl[1] == [1, 1, 0]:
+    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[3]:
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.0, 1.0, 0.0))
-    if i >= val[0] and hkl[1] == [0, 1, 2]:
+    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[4]:
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.5, 0.5, 0.5))
-    if i >= val[0] and hkl[1] == [1, 1, 3]:
+    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[5]:
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.4, 0.4, 0.0))
-    if i >= val[0] and hkl[1] == [1, 2, 3]:
+    if i >= val[0] and (hkl[1][0], hkl[1][1], hkl[1][2]) in f[6]:
         mlab.pipeline.surface(p1, representation='surface', opacity = 1.0, color=(0.5, 0.0, 0.5))
     # else:
         # print hkl[1], 'plane is not defined.'	
@@ -146,7 +162,7 @@ def plot3d_surfaces(val, hkl, planes, number_planes):
     mlab.pipeline.surface(p1, representation='wireframe', opacity = 1.0, color=(1, 1, 1))
 #    mlab.pipeline.glyph(p1, mode='point', color=(0, 1, 0), scale_factor=0, scale_mode='none') 
 
-    return val
+    return f
 
 def array_to_list(qfp2):
     '''
@@ -172,28 +188,26 @@ def number_of_planes(n_qfp2):
 
 if __name__ == "__main__":  
                       		
-    hkl = [[1,0,0], [1,1,0]]                    # [1,0,0] first, [1,1,1], [1,1,0], [1,2,2], [1,2,3], [1,1,3] and [0,1,2] later, other forms
-    planes, number_planes = crystal_plane(hkl)	# (like [-1,1,1], [-1,1,0], and [2,1,3], etc.) have to make corresponding changes to the function plot3d_surfaces.	
+    hkl = [[1,0,0], [1,1,0]]                    
+    planes, number_planes = crystal_plane(hkl)		
     area_target = [0.8, 0.2]                    # the sum of the area fractions is 1.
     Iter_max = 5000
     re_xtol  = 1e-12
     abs_ftol = 1e-12
-    d0    = [1, 1]
-    dx    = 0.0001	
-    res   = optimal_distance_local(Iter_max, re_xtol, abs_ftol, d0, dx)  
-    areas = surface_areas(res[0])	
+    d0       = [1, 1]
+    dx       = 0.0001	
+    res      = optimal_distance_local(Iter_max, re_xtol, abs_ftol, d0, dx)  
+    areas    = surface_areas(res[0])	
     areas_fraction = [areas[0]/(areas[0] + areas[1]), areas[1]/(areas[0] + areas[1])]
     print 'The optimal distance d is', res[0], ', area is ', areas, '.'
     print 'The area fraction is ', areas_fraction,  ', target area fraction is', area_target, '.'
 	
-    ps_setd_mingled(number_planes, planes, res[0])   
+    ps_setd_mingled(number_planes, planes, res[0])  # set distances of planes。 
     diameter = 10.0      
     volume   = 4.0/3.0*np.pi* (diameter*0.5)**3
-    qfp = enclose_polyhedron(number_planes, planes, volume)
-	
-    n_qfp2, qfp2_list = array_to_list(qfp[2])
+    qfp      = enclose_polyhedron(number_planes, planes, volume)
 
-    # the following two txt files are for running the program under Windows and do not need to be considered under Linux.
+    n_qfp2, qfp2_list = array_to_list(qfp[2])
     point_for_plane = open('point_for_plane.txt','w+') # open the file 
     point_for_plane.truncate()                         # empty the file
     np.savetxt('point_for_plane.txt', qfp2_list)        
@@ -201,35 +215,37 @@ if __name__ == "__main__":
     number_of_plane = open('number_of_plane.txt','w+') 
     number_of_plane.truncate()  
     np.savetxt('number_of_plane.txt', n_qfp2)
-    	
-    val = number_of_planes(n_qfp2)
-    p1  = tvtk.PolyData()  
+
+    Mil_ind  = [[1,0,0], [1,1,1], [1,2,2], [1,1,0], [0,1,2], [1,1,3], [1,2,3]]
+    f        = crystal_surface_family(Mil_ind)		
+    val      = number_of_planes(n_qfp2)
+    p1       = tvtk.PolyData()  
     n_planes = len(qfp[2])  
     for i in range(n_planes):   
         print "plane", i
-        p1.points  = qfp[2][i]                    # the coordinates of the intersection of each plane.
-        n_points   = len(qfp[2][i])
+        p1.points = qfp[2][i]                    # the coordinates of the intersection of each plane.
+        n_points  = len(qfp[2][i])
         if n_points == 3: 
             faces = [n_points,0,1,2]
-            plot3d_surfaces(val, hkl, faces, 1)
+            plot3d_surfaces(f,val, hkl, faces, 1)
         if n_points == 4:           
             faces = [n_points,0,1,2,3]
-            plot3d_surfaces(val, hkl, faces, 1)   
+            plot3d_surfaces(f,val, hkl, faces, 1)   
         if n_points == 5: 
             faces = [n_points,0,1,2,3,4]
-            plot3d_surfaces(val, hkl, faces, 1)
+            plot3d_surfaces(f,val, hkl, faces, 1)
         if n_points == 6: 
             faces = [n_points,0,1,2,3,4,5]
-            plot3d_surfaces(val, hkl, faces, 1)  
+            plot3d_surfaces(f,val, hkl, faces, 1)  
         if n_points == 7: 
             faces = [n_points,0,1,2,3,4,5,6]
-            plot3d_surfaces(val, hkl, faces, 1)   
+            plot3d_surfaces(f,val, hkl, faces, 1)   
         if n_points == 8: 
             faces = [n_points,0,1,2,3,4,5,6,7]
-            plot3d_surfaces(val, hkl, faces, 1)
+            plot3d_surfaces(f,val, hkl, faces, 1)
         if n_points == 12:
             faces = [n_points,0,1,2,3,4,5,6,7,8,9,10,11]
-            plot3d_surfaces(val, hkl, faces, 1)
+            plot3d_surfaces(f,val, hkl, faces, 1)
             
         elif len(qfp[2][i]) > 12:
             print "The planes have more than 12 intersection points.", len(qfp[2][i])
