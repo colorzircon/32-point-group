@@ -183,13 +183,13 @@ def number_of_planes(n_qfp2):
     val = []  
     for item in n_qfp2:
         val.append(n_qfp2.count(item))
-
+    val[1] = 6  # the cube has 6 equivalent (100) faces.
     return  val
 		
 
 if __name__ == "__main__":  
                       		
-    hkl = [[1,0,0], [1,1,0]]                    
+    hkl = [[1,0,0], [1,1,3]]                    
     planes, number_planes = crystal_plane(hkl)		
     area_target = [0.8, 0.2]                    # the sum of the area fractions is 1.
     Iter_max = 5000
