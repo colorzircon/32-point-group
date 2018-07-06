@@ -11,8 +11,7 @@ import crystal_class as CC
 import basis
 from crystal_lattice import CrystalLattice
 from crystal_shape import ps_setd_mingled
-import matplotlib.pyplot as plt
-
+from scipy.optimize import minimize
 
 def crystal_plane(hkl):
     '''
@@ -190,6 +189,7 @@ def area_fraction_fun(d,grad):
     '''
      	objective function of area fraction.
     '''
+    print 'd is', d
     areas, edge_fraction, edge_length_o = surface_areas(d)
     print 'areas', areas, areas[0]/(areas[0]+areas[1]), areas[1]/(areas[0]+areas[1])
     print 'edge_fraction', edge_fraction
@@ -197,6 +197,7 @@ def area_fraction_fun(d,grad):
     areas_fra  = [areas[0]/(areas[0] + areas[1]), areas[1]/(areas[0] + areas[1])] # area fraction.
     areas_diff = np.array(area_target) - np.array(areas_fra)                      # the difference between the target area and the optimized area.
     areas_squ  = sum([x*x for x in areas_diff])                                   # the square of the area difference.
+    print '-------------------------------------------------------------------'  
 	
     return areas_squ
     
@@ -213,6 +214,7 @@ def area_edge_fraction_fun(d,grad):
     print 'areas_edge_fra', areas_edge_fra
     areas_edge_diff  = np.array(area_edge_target) - np.array(areas_edge_fra)       # the difference between the target area and the optimized area.
     areas_squ  = sum([x*x for x in areas_edge_diff])                                   # the square of the area difference.
+    print '-------------------------------------------------------------------'  
 	
     return areas_squ
 	
@@ -234,8 +236,11 @@ def surface_energy_ratio(d, grad):
 #    return surface_energy0[0]*areas[0] + surface_energy0[1]*areas[1] + surface_energy0[2]*1.0e-9*edge_length_o[0] + surface_energy0[3]*1.0e-9*edge_length_o[1]
     # print 'areas is', areas
     # print 'edge_length_o is', edge_length_o
+    if len(edge_length_o) == 2:
+        return surface_energy0[0]*areas[0] + surface_energy0[1]*areas[1] + surface_energy0[2]*edge_length_o[0] + surface_energy0[3]*edge_length_o[1]
+    elif len(edge_length_o) == 1:  
+        return surface_energy0[0]*areas[0] + surface_energy0[1]*areas[1] + surface_energy0[3]*edge_length_o[0]
     
-    return surface_energy0[0]*areas[0] + surface_energy0[1]*areas[1] + surface_energy0[2]*edge_length_o[0] + surface_energy0[3]*edge_length_o[1]
 #    return surface_energy0[0]*areas[0] + areas[1] + surface_energy0[1]*edge_length_o[0] + surface_energy0[2]*edge_length_o[1]
 
 
@@ -257,18 +262,26 @@ def area_edge_test(surface_energy,grad):
     print 'surface_energy is', surface_energy
     surface_energy0 = surface_energy
     global surface_energy0
-    res1 = optimal_distance_local(surface_energy_ratio, 5000, 1e-12, 1e-12, [1.0, 1.0], 0.001) 
+    res1 = optimal_distance_local(surface_energy_ratio, 5000, 1e-6, 1e-12, [1.0, 1.0], 0.001)
+    # res1 = optimal_distance_global(surface_energy_ratio, 5000, 1e-6, 1e-6, [1.0, 1.0], 0.001, [0.0, 0.0], [2.0,2.0])
     # print 'dist is', res1[0]     
-    areas, edge_fraction, edge_length_o = surface_areas(res1[0])
+    areas, edge_fraction, edge_length_o = surface_areas(res1[0]/res1[0][0]) # res1[0]  res1.x
     areas_fra = [areas[0]/(areas[0] + areas[1]), areas[1]/(areas[0] + areas[1])] # area fraction.
-    # print 'areas fraction is', areas_fra
-    # print 'edge length fraction is', edge_fraction    
+    print 'areas is', areas
+    print 'edge length fraction is', edge_fraction 
+    print 'edge length is', edge_length_o    
     areas_fra =  list(areas_fra)
     edge_fraction =  list(edge_fraction)
-    areas_fra.extend(edge_fraction)
-    # print 'areas_fra', areas_fra
-    areas_edge_diff = np.array(area_edge_target) - np.array(areas_fra)       
-    areas_squ  = sum([x*x for x in areas_edge_diff])                                   
+    if len(edge_fraction) == 2:  
+        areas_fra.extend(edge_fraction)
+    elif len(edge_fraction) == 1:
+        areas_fra.extend([0,1])
+    # print 'areas_fra', areas_fra  
+    areas_edge_diff = np.array(area_edge_target) - np.array(areas_fra) 
+
+    areas_squ  = sum([x*x for x in areas_edge_diff]) 
+    print 'minf is', areas_squ    
+#    print (edge_length_o[0]*surface_energy0[2]+edge_length_o[1]*surface_energy0[3])/(areas[0]*surface_energy0[0]+areas[1]*surface_energy0[1]+edge_length_o[0]*surface_energy0[2]+edge_length_o[1]*surface_energy0[3])    
     print '-------------------------------------------------------------------'  
 	
     return areas_squ    
@@ -287,7 +300,7 @@ def optimal_distance_local(object_func, Iter_max, re_xtol, abs_ftol, d0, dx):
 		enumerated_constant:  enumerated constant which takes on 1, 2, 3, 4, 5, and 6.		
 		minf: the function value corresponding to optd.
     '''  
-    opt = nlopt.opt(nlopt.LN_BOBYQA, len(d0)) # PRAXIS  BOBYQA
+    opt = nlopt.opt(nlopt.LN_COBYLA, len(d0)) # PRAXIS  BOBYQA
     opt.set_min_objective(object_func)    
     opt.set_maxeval(Iter_max) 
     opt.set_xtol_rel(re_xtol)
@@ -316,7 +329,7 @@ def optimal_distance_global(object_func, Iter_max, re_xtol, abs_ftol, gamma0, dx
      	This is the global optimization algorithm in NLopt, mainly including
 		ESCH, ISRES, MLSL, etc.
     '''
-    opt = nlopt.opt(nlopt.G_MLSL_LDS, len(gamma0))   # G_MLSL_LDS, GN_ISRES, GN_ORIG_DIRECT, GN_ESCH
+    opt = nlopt.opt(nlopt.GN_ORIG_DIRECT, len(gamma0))   # G_MLSL_LDS, GN_ISRES, GN_ORIG_DIRECT, GN_ESCH, GN_CRS2_LM
     opt.set_min_objective(object_func)          
     opt.set_maxeval(Iter_max) 
     opt.set_xtol_rel(re_xtol)
@@ -344,19 +357,56 @@ def optimal_distance_global(object_func, Iter_max, re_xtol, abs_ftol, gamma0, dx
     elif enumerated_constant == 6:
         print 'NLOPT_SUCCESS = 6, maxtime (above) was reached.' 
     
-    return optd, enumerated_constant, minf      
+    return optd, enumerated_constant, minf  
+    
+def surface_energy_ratio_scipy(d):
+    '''
+     	objective function of of critical energy ratio.
+    '''
+    areas, edge_fraction, edge_length_o = surface_areas(d)
+    
+    return surface_energy0[0]*areas[0] + surface_energy0[1]*areas[1] + surface_energy0[2]*edge_length_o[0] + surface_energy0[3]*edge_length_o[1] 
 
+def area_edge_test_scipy(surface_energy):
+    '''
+     	objective function of area fraction.
+    '''
+    print 'surface_energy is', surface_energy
+    surface_energy0 = surface_energy
+    global surface_energy0
+    res1 = optimal_distance_local(surface_energy_ratio, 5000, 1e-6, 1e-12, [1.0, 1.0], 0.001)
+    # res1 = optimal_distance_global(surface_energy_ratio, 5000, 1e-6, 1e-6, [1.0, 1.0], 0.001, [0.0, 0.0], [2.0,2.0])
+    # print 'dist is', res1[0]   
+    # res1 = minimize(surface_energy_ratio_scipy, [1.0, 1.0], method='nelder-mead', options={'xtol': 1e-12, 'disp': True})    
+    areas, edge_fraction, edge_length_o = surface_areas(res1[0]/res1[0][0]) # res1[0]  res1.x
+    areas_fra = [areas[0]/(areas[0] + areas[1]), areas[1]/(areas[0] + areas[1])] # area fraction.
+    print 'areas is', areas
+    print 'area fraction is', areas_fra
+    print 'edge length fraction is', edge_fraction 
+    print 'edge length is', edge_length_o    
+    areas_fra =  list(areas_fra)
+    edge_fraction =  list(edge_fraction)
+    areas_fra.extend(edge_fraction)
+    print 'areas_fra', areas_fra
+    areas_edge_diff = np.array(area_edge_target) - np.array(areas_fra)
+    print 'areas_edge_diff', areas_edge_diff     
+    areas_squ  = sum([x*x for x in areas_edge_diff]) 
+    print 'minf is', areas_squ    
+#    print (edge_length_o[0]*surface_energy0[2]+edge_length_o[1]*surface_energy0[3])/(areas[0]*surface_energy0[0]+areas[1]*surface_energy0[1]+edge_length_o[0]*surface_energy0[2]+edge_length_o[1]*surface_energy0[3])
+    print '-------------------------------------------------------------------'  
+	
+    return areas_squ  
 
 if __name__=="__main__" :
 	
     hkl = [[1,0,0], [1,1,1]]
     planes, number_planes = crystal_plane(hkl)
-    diameter = 10 # 1.0e-9 
+    diameter = 1.0 # 1.0e-9 
     volume   = 4.0/3.0*np.pi* (diameter*0.5)**3 
     
-    area_target = [21/(21+np.sqrt(3)), np.sqrt(3)/(21+np.sqrt(3))] 
-    res1 = optimal_distance_local(area_fraction_fun, 5000, 1e-6, 1e-6, [1.0, 1.0], 0.001)
-    print res1[0]
+    # area_target = [21/(21+np.sqrt(3)), np.sqrt(3)/(21+np.sqrt(3))] 
+    # res1 = optimal_distance_local(area_fraction_fun, 5000, 1e-6, 1e-6, [1.0, 1.0], 0.001)
+    # print res1[0], res1[0][0]/res1[0][1], res1[0][1]/res1[0][0]
     
     # print '\n'    
     # print '============ using energy to calculate areas and edge length ==========='    
@@ -372,19 +422,30 @@ if __name__=="__main__" :
     # print 'area fraction is', area_ps[0]/(area_ps[0]+area_ps[1]), area_ps[1]/(area_ps[0]+area_ps[1])
     # print 'area is', area_ps[0], area_ps[1]    
 	
-    # print '\n'
-    # print '****************************** results *************************************'    
-    # lb = [0.0, 0.0, 0.0, 0.0]
-    # ub = [4.0, 4.0, 4.0, 4.0]
-    # area_edge_target = [21/(21+np.sqrt(3)), np.sqrt(3)/(21+np.sqrt(3)), 1.0/(1+np.sqrt(2)), np.sqrt(2)/(1+np.sqrt(2))]   
-# #    res2 = optimal_distance_local(area_edge_test, 5000, 1e-5, 1e-5, [1.0, 1.0, 1.0, 1.0], 0.1) 
-    # res2 = optimal_distance_global(area_edge_test, 5000, 1e-3, 1e-3, [1.0, 1.0, 1.0, 1.0], 0.1, lb, ub) 
-    # print 'surface area and edge length are', area_edge_target 
-    # print 'energy is', [res2[0][0], res2[0][1], res2[0][2], res2[0][3]]    
-    # print 'energy ratio is', [res2[0][0]/res2[0][1], res2[0][1]/res2[0][0], res2[0][2]/res2[0][3], res2[0][3]/res2[0][2]]
-    # print 'the minimum value of the function (minf) is', res2[2]
+    print '\n'
+    print '****************************** results *************************************'    
+    lb = [0.0, 0.0, 0.0, 0.0]
+    ub = [10.0, 10.0, 10.0, 10.0]
+    area_edge_target = [21/(21+np.sqrt(3)), np.sqrt(3)/(21+np.sqrt(3)), 1.0/(1+np.sqrt(2)), np.sqrt(2)/(1+np.sqrt(2))]       # 
+    # res2 = optimal_distance_local(area_edge_test, 5000, 1e-12, 1e-12, [0.5, 0.6, 0.5, 0.5], 0.01) 
+    res2 = optimal_distance_global(area_edge_test, 5000, 1e-3, 1e-8, [5.0, 0.1, 7.0, 8.0], 0.01, lb, ub)  # 1.1295, 1.9691, 0.8906, 0.3253
+    # res3 = optimal_distance_local(area_edge_test, 5000, 1e-8, 1e-14, res2[0], 0.001)
+    # print res3[0], [res3[0][0]/res3[0][1], res3[0][1]/res3[0][0], res3[0][2]/res3[0][3], res3[0][3]/res3[0][2]]
+    print 'surface area and edge length are', area_edge_target 
+    print 'energy is', [res2[0][0], res2[0][1], res2[0][2], res2[0][3]]    
+    print 'energy ratio is', [res2[0][0]/res2[0][1], res2[0][1]/res2[0][0], res2[0][2]/res2[0][3], res2[0][3]/res2[0][2]]
+    print 'the minimum value of the function (minf) is', res2[2]
 
-   
+    # from scipy.optimize import fmin_cobyla
+    # x0 = np.array([1.2, 1.0, 1.0, 1.0])
+    # # res = minimize(area_edge_test_scipy, x0, method='nelder-mead', options={'xtol': 1e-10, 'disp': True})
+    # res = fmin_cobyla(area_edge_test_scipy, x0, cons=[], rhobeg=1.0e-1)
+    # print 'area_edge_target is', area_edge_target
+    # print(res.x)
+    # print res.x[0]/res.x[1], res.x[2]/res.x[3]  
+    
+
+ 
 
 
 
